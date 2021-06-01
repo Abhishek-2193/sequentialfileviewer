@@ -8,15 +8,20 @@ from PySide import QtGui, QtCore
 class MainWindow(QtGui.QMainWindow):
 
     # Set window title, root path and list of image formats here
-    path = "/Users/abhishekravi/Desktop"
-    winTitle = 'Sequence Selector'
-    formatList = ['jpg', 'png', 'tif', 'exr']
+    ROOT_PATH = "/Users/abhishekravi/Desktop"
+    WINDOW_TITLE = 'Sequence Selector'
+    FORMAT_LIST = {'jpg', 'png', 'tif', 'exr'}
 
     # window initialization
     def __init__(self):
         QtGui.QMainWindow.__init__(self)
         self.resize(800, 600)
-        self.setWindowTitle(self.winTitle)
+        self.setWindowTitle(self.WINDOW_TITLE)
+        self.createUI()
+        self.connectUI()
+
+    # Create window UI
+    def createUI(self):
 
         self.browserLabel = QtGui.QLabel()
         self.browserLabel.setText("Browser")
@@ -30,172 +35,172 @@ class MainWindow(QtGui.QMainWindow):
         self.fileBrowserWidget = QtGui.QWidget(self)
         self.setCentralWidget(self.fileBrowserWidget)
         self.dirmodel = QtGui.QFileSystemModel()
-        self.dirmodel.setRootPath(self.path)
+        self.dirmodel.setRootPath(self.ROOT_PATH)
 
         # Filter to display only folders and not files
         self.dirmodel.setFilter(QtCore.QDir.NoDotAndDotDot | QtCore.QDir.AllDirs)
-        self.folder_view = QtGui.QTreeView()
-        self.folder_view.setModel(self.dirmodel)
-        self.folder_view.setRootIndex(self.dirmodel.index(self.path))
-        self.folder_view.clicked[QtCore.QModelIndex].connect(self.folderClick)
+        self.folderView = QtGui.QTreeView()
+        self.folderView.setModel(self.dirmodel)
+        self.folderView.setRootIndex(self.dirmodel.index(self.ROOT_PATH))
 
         # Hiding header and columns for size, file type, and last modified
-        self.folder_view.setHeaderHidden(True)
-        self.folder_view.hideColumn(1)
-        self.folder_view.hideColumn(2)
-        self.folder_view.hideColumn(3)
+        self.folderView.setHeaderHidden(True)
+        self.folderView.hideColumn(1)
+        self.folderView.hideColumn(2)
+        self.folderView.hideColumn(3)
 
         # List widget for files
-        self.selectionModel = self.folder_view.selectionModel()
+        self.selectionModel = self.folderView.selectionModel()
         self.filemodel = QtGui.QFileSystemModel()
-        self.file_view = QtGui.QListWidget()
+        self.fileView = QtGui.QListWidget()
 
         # Enable multi selection
-        self.file_view.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
+        self.fileView.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
 
         # Button for displaying full file sequence list
         self.expandButton = QtGui.QPushButton("Display All Files")
         self.expandButton.setMinimumSize(400, 22)
-        self.expandButton.clicked.connect(self.expandList)
 
         # Adding splitter between both views
         splitter_filebrowser = QtGui.QSplitter()
-        splitter_filebrowser.addWidget(self.folder_view)
-        splitter_filebrowser.addWidget(self.file_view)
+        splitter_filebrowser.addWidget(self.folderView)
+        splitter_filebrowser.addWidget(self.fileView)
 
         # Setting Layout for widgets
-        vBox = QtGui.QVBoxLayout()
+        vertLayout = QtGui.QVBoxLayout()
         topBox = QtGui.QHBoxLayout()
         bottomBox = QtGui.QHBoxLayout()
 
-        vBox.setContentsMargins(0, 0, 0, 0)
+        vertLayout.setContentsMargins(0, 0, 0, 0)
         topBox.setContentsMargins(0, 0, 0, 0)
         bottomBox.setContentsMargins(0, 0, 0, 0)
 
         topBox.addWidget(self.browserLabel)
         topBox.addWidget(self.listLabel)
 
-        vBox.addLayout(topBox)
-        vBox.addWidget(splitter_filebrowser)
+        vertLayout.addLayout(topBox)
+        vertLayout.addWidget(splitter_filebrowser)
 
         bottomBox.addStretch(1)
         bottomBox.addWidget(self.expandButton)
-        vBox.addLayout(bottomBox)
-        self.fileBrowserWidget.setLayout(vBox)
+        vertLayout.addLayout(bottomBox)
+        self.fileBrowserWidget.setLayout(vertLayout)
+
+    # Connect browser click and button functions
+    def connectUI(self):
+        self.folderView.clicked[QtCore.QModelIndex].connect(self.folderOnClick)
+        self.expandButton.clicked.connect(self.expandSequenceSelection)
 
     # Returns index of current folder selection
 
-    def get_index(self):
-        index = self.selectionModel.currentIndex()
-        return index
+    def getCurrentIndex(self):
+        currentIndex = self.selectionModel.currentIndex()
+        return currentIndex
 
     # Returns path of current folder selection
-
-    def get_path(self):
-        path = self.dirmodel.filePath(self.get_index())
-        return path
+    def getCurrentPath(self):
+        currentPath = self.dirmodel.filePath(self.getCurrentIndex())
+        return currentPath
 
     # Checks if file is part of an image sequence by checking list of extensions and text format
+    def isSequence(self, file):
+        fileParts = file.split(".")
+        length = len(fileParts)
 
-    def checkSeq(self, file):
-        if (file.split(".")[len(file.split(".")) - 1] in self.formatList and file.split(".") > 2):
+        if (fileParts[length - 1] in self.FORMAT_LIST and length > 2):
             return True
 
     # Called on clicking folder in folder view
-
-    def folderClick(self, index):
-        dir_path = self.get_path()
-        self.filemodel.setRootPath(dir_path)
-        self.file_view.setRootIndex(self.filemodel.index(dir_path))
-        self.populateList(dir_path)
+    def folderOnClick(self, index):
+        currentPath = self.getCurrentPath()
+        self.filemodel.setRootPath(currentPath)
+        self.fileView.setRootIndex(self.filemodel.index(currentPath))
+        self.populateList(currentPath)
 
     # Populates list of files for file view including collapsed image sequence entries
+    def populateList(self, currentPath):
+        self.fileView.clear()
+        fileList = list(set(os.listdir(currentPath)) - set(self.returnSequenceFiles(currentPath)))
 
-    def populateList(self, dir_path):
-        self.file_view.clear()
-        fileList = list(set(os.listdir(dir_path)) - set(self.listSeq(dir_path)))
-
-        for file in self.SortSeq(dir_path):
+        for file in self.createSequenceDictionary(currentPath):
             fileList.append(file)
         for file in fileList:
-            self.file_view.addItem(file)
+            self.fileView.addItem(file)
 
     # Returns list of all image sequence files in given folder path
+    def returnSequenceFiles(self, currentPath):
+        sequenceList = []
 
-    def listSeq(self, dir_path):
-        seqList = []
+        for file in sorted(os.listdir(currentPath)):
+            if (self.isSequence(file)):
+                sequenceList.append(file)
+        return sequenceList
 
-        for file in sorted(os.listdir(dir_path)):
-            if (self.checkSeq(file)):
-                seqList.append(file)
-        return seqList
-
-    # Creates dictionary of image sequences with filename as key and list of sequence info as value
-
-    def SortSeq(self, dir_path):
-        seqList = {}
+    # Creates dictionary of image sequences with filename as key and list of sequence info as value\
+    def createSequenceDictionary(self, currentPath):
+        sequenceDict = {}
         counter = 0
         root = ''
         filename = ''
 
-        for file in sorted(os.listdir(dir_path)):
+        for file in sorted(os.listdir(currentPath)):
 
             # Extracting filename and checking exception for files with extra "." in the filename
-            if (self.checkSeq(file)):
+            if (self.isSequence(file)):
                 for x in range(0, len(file.split(".")) - 2):
                     filename += file.split(".")[x]
                     filename += "."
                 filename = filename[:-1]
-
                 index = file.split(".")[len(file.split(".")) - 2]
-                extension = file.split(".")[len(file.split(".")) - 1]
+                padding = len(index)
+                extension = os.path.splitext(file)[1]
 
-                if not filename in seqList:
-                    seqList[filename] = {
+                if not filename in sequenceDict:
+                    sequenceDict[filename] = {
                         'ext': extension,
-                        'start_index': int(index),
-                        'end_index': int(index), }
+                        'startIndex': int(index),
+                        'endIndex': int(index),
+                        'padding': padding}
 
-                seqList[filename]['end_index'] = int(index)
+                sequenceDict[filename]['endIndex'] = int(index)
                 filename = ''
 
         # Calling function to convert dictionary to collapsed file format
-        return self.seqFormat(seqList)
+        print sequenceDict
+        return self.returnCollapsedSequence(sequenceDict)
 
     # Accepts image sequence dictionary as parameter and returns collapsed image sequence format for display in list view
+    def returnCollapsedSequence(self, sequenceDict):
+        outputString = ''
+        for key, seqInfo in sequenceDict.items():
 
-    def seqFormat(self, seqList):
-        output_string = ''
-        for key, seq_info in seqList.items():
-
-            if seq_info['start_index'] == seq_info['end_index']:
-                output_string += '{}.{}.{}\n'.format(key, seq_info['start_index'], seq_info['ext'])
+            if seqInfo['startIndex'] == seqInfo['endIndex']:
+                outputString += '{}.{}.{}\n'.format(key, seqInfo['startIndex'], seqInfo['ext'])
                 continue
 
-            output_string += '{}.%{}d.{} {}-{}\n'.format(key, str(seq_info['end_index'] + 1).zfill(2), seq_info['ext'], seq_info['start_index'], seq_info['end_index'])
-        return output_string.split("\n")
+            outputString += '{}.%{}d.{} {}-{}\n'.format(key, str(seqInfo['padding']).zfill(2), seqInfo['ext'], seqInfo['startIndex'], seqInfo['endIndex'])
+        return outputString.split("\n")
 
     # Checks for image sequences in selection from list view and displays full sequences in message box
-
-    def expandList(self):
-        seqList = []
-        seqTxt = ''
-        dir_path = self.get_path()
+    def expandSequenceSelection(self):
+        sequenceList = []
+        sequenceText = ''
+        currentPath = self.getCurrentPath()
         msgBox = QtGui.QMessageBox()
-        selection = self.file_view.selectedItems()
+        selection = self.fileView.selectedItems()
         if not selection:
-            seqTxt = 'No files selected'
+            sequenceText = 'No files selected'
         for item in selection:
-            for file in os.listdir(dir_path):
+            for file in os.listdir(currentPath):
                 s1 = item.text()
                 s2 = str(file)
                 if s1.split(".")[0] == s2.split(".")[0]:
-                    seqList.append(s2)
+                    sequenceList.append(s2)
 
-        for file in sorted(seqList):
-            seqTxt += file
-            seqTxt += '\n'
-        msgBox.setText(seqTxt)
+        for file in sorted(sequenceList):
+            sequenceText += file
+            sequenceText += '\n'
+        msgBox.setText(sequenceText)
         msgBox.exec_()
 
 
