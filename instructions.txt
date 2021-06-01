@@ -1,0 +1,44 @@
+
+Ingenuity Programming Test
+
+Sequential File Selector
+
+A small gui program for displaying and selecting sequential files.
+
+Use "createFiles.py" to create a batch of test files.  Modify the fileRoot as necessary for your system.
+
+Should run as follows:
+- User browses their computer and selects a folder
+- This populates a list widget with the files in that folder
+- Sequential files should be collapsed to the following format:
+
+	[baseName].%[framePadding].[extension] [startFrame]-[endFrame]
+
+	Frame padding is always separated from the filename by a period.
+
+	for example:
+	taco.0001.jpg
+	taco.0002.jpg
+	taco.0003.jpg
+	
+	would collapse to:
+	taco.%04d.jpg 1-3
+
+	but:
+	comp_v001.mb
+	comp_v002.mb
+
+	would not collapse as there is no frame padding
+
+- User can multi select files in this list
+- A pressable button displays a message box listing the actual files the user selected
+
+	ex: If the user selected taco.%04d.jpg 1-3, the message box would display
+	taco.0001.jpg, taco.0002.jpg, taco.0003.jpg
+
+The program should be created in Python 2.7 with the gui done in PySide.  Please refrain from using other third party libraries outside of PySide as we may not have them installed.
+
+If this seems super simple you're right, it is!  It's not about creating a flashy program, just a functional one that does what a user would expect.
+
+Send back
+- .zip of the source file(s)
