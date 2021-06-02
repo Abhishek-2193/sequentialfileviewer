@@ -106,12 +106,14 @@ class MainWindow(QtGui.QMainWindow):
     # Checks if file is part of an image sequence by checking list of extensions and text format
     def isSequence(self, file):
 
-        return re.match("^(.+?)([0-9]+)\.(.{3,4})$", file)
-        #fileParts = file.split(".")
-        #length = len(fileParts)
+        # Regex checks and groups for image sequence formats seperated by "." and accounts for filenames with "." in them
+        # Regex could potentially be improved further by coding the extension list into the expression
+        return re.match("^(.+?)\.([0-9]+)\.(.{3,4})$", file)
 
-        # if (fileParts[length - 1] in self.FORMAT_LIST and length > 2):
-        # return True
+    # Checks if file is of the collapsed image sequence text format
+    def isCollapsedFormat(self, file):
+
+        return re.match("^(.+?)\.\%([0-9]+)d{1}\.(.{3,4})([0-9]+)\-([0-9]+)$", file)
 
     # Called on clicking folder in folder view
     def folderOnClick(self, index):
@@ -127,7 +129,7 @@ class MainWindow(QtGui.QMainWindow):
 
         for file in self.createSequenceDictionary(currentPath):
             fileList.append(file)
-        for file in fileList:
+        for file in sorted(fileList):
             self.fileView.addItem(file)
 
     # Returns list of all image sequence files in given folder path
@@ -135,7 +137,8 @@ class MainWindow(QtGui.QMainWindow):
         sequenceList = []
 
         for file in sorted(os.listdir(currentPath)):
-            if (self.isSequence(file)):
+            match = self.isSequence(file)
+            if match and match.groups()[2] in self.FORMAT_LIST:
                 sequenceList.append(file)
         return sequenceList
 
@@ -150,9 +153,9 @@ class MainWindow(QtGui.QMainWindow):
 
             # Extracting filename, index, and extension using regular expressions
             match = self.isSequence(file)
-            if match:
+            if match and match.groups()[2] in self.FORMAT_LIST:
                 splitList = match.groups()
-                filename = splitList[0][:-1]
+                filename = splitList[0]
                 index = splitList[1]
                 extension = splitList[2]
                 padding = len(index)
@@ -184,30 +187,57 @@ class MainWindow(QtGui.QMainWindow):
 
     # Checks for image sequences in selection from list view and displays full sequences in message box
     def expandSequenceSelection(self):
-        sequenceList = []
+        sequenceList = {}
         sequenceText = ''
         currentPath = self.getCurrentPath()
         msgBox = QtGui.QMessageBox()
+
+        # Get selection from listview
         selection = self.fileView.selectedItems()
+
+        # Check for no files selected
         if not selection:
             sequenceText = 'No files selected'
-        for item in selection:
-            for file in os.listdir(currentPath):
-                s1 = item.text()
-                s2 = str(file)
-                if s1.split(".")[0] == s2.split(".")[0]:
-                    sequenceList.append(s2)
 
-        for file in sorted(sequenceList):
-            sequenceText += file
-            sequenceText += '\n'
+        for item in selection:
+            itemText = item.text()
+
+            # Check if selection is a collapsed image sequence or single file
+            if self.isCollapsedFormat(itemText):
+                sequenceList[itemText] = sorted(self.returnMatchingFiles(itemText))
+            else:
+                sequenceList[itemText] = item.text()
+
+        # Populate text for display in messagebox
+        for fileName, fileList in sorted(sequenceList.iteritems()):
+            if type(fileList) == list:
+                sequenceText += ", ".join(fileList)
+                sequenceText += '\n\n'
+            else:
+                sequenceText += fileList
+                sequenceText += '\n\n'
+
         msgBox.setText(sequenceText)
         msgBox.exec_()
 
+    # Returns list of image sequence files matched with selection
+    def returnMatchingFiles(self, txt):
+        fileList = []
+        currentPath = self.getCurrentPath()
+
+        for file in os.listdir(currentPath):
+            check = self.isSequence(file)
+            if check:
+                if txt.split("%")[0][:-1] == check.groups()[0]:
+                    fileList.append(file)
+
+        return fileList
+
 
 # Launch main window
-app = QtGui.QApplication(sys.argv)
-main = MainWindow()
-main.show()
+if __name__ == "__main__":
+    app = QtGui.QApplication(sys.argv)
+    main = MainWindow()
+    main.show()
 
 sys.exit(app.exec_())
