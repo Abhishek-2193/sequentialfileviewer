@@ -8,8 +8,8 @@ from PySide import QtGui, QtCore
 # main window class
 class MainWindow(QtGui.QMainWindow):
 
-    # Set window title, root path and list of image formats here
-    ROOT_PATH = "/Users/abhishekravi/Desktop"
+    # Set root path, window title, and list of image formats here
+    ROOT_PATH = "/Users/abhishekravi/Desktop/Archu"
     WINDOW_TITLE = 'Sequence Selector'
     FORMAT_LIST = {'jpg', 'png', 'tif', 'exr'}
 
@@ -239,5 +239,4 @@ if __name__ == "__main__":
     app = QtGui.QApplication(sys.argv)
     main = MainWindow()
     main.show()
-
-sys.exit(app.exec_())
+    sys.exit(app.exec_())
