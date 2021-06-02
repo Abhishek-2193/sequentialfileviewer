@@ -1,5 +1,6 @@
 import sys
 import os
+import re
 from PySide import QtGui, QtCore
 
 # File browser widget with list view that collapses image sequences to a single file format and shows expanded list on button click
@@ -104,11 +105,13 @@ class MainWindow(QtGui.QMainWindow):
 
     # Checks if file is part of an image sequence by checking list of extensions and text format
     def isSequence(self, file):
-        fileParts = file.split(".")
-        length = len(fileParts)
 
-        if (fileParts[length - 1] in self.FORMAT_LIST and length > 2):
-            return True
+        return re.match("^(.+?)([0-9]+)\.(.{3,4})$", file)
+        #fileParts = file.split(".")
+        #length = len(fileParts)
+
+        # if (fileParts[length - 1] in self.FORMAT_LIST and length > 2):
+        # return True
 
     # Called on clicking folder in folder view
     def folderOnClick(self, index):
@@ -145,15 +148,14 @@ class MainWindow(QtGui.QMainWindow):
 
         for file in sorted(os.listdir(currentPath)):
 
-            # Extracting filename and checking exception for files with extra "." in the filename
-            if (self.isSequence(file)):
-                for x in range(0, len(file.split(".")) - 2):
-                    filename += file.split(".")[x]
-                    filename += "."
-                filename = filename[:-1]
-                index = file.split(".")[len(file.split(".")) - 2]
+            # Extracting filename, index, and extension using regular expressions
+            match = self.isSequence(file)
+            if match:
+                splitList = match.groups()
+                filename = splitList[0][:-1]
+                index = splitList[1]
+                extension = splitList[2]
                 padding = len(index)
-                extension = os.path.splitext(file)[1]
 
                 if not filename in sequenceDict:
                     sequenceDict[filename] = {
@@ -166,7 +168,6 @@ class MainWindow(QtGui.QMainWindow):
                 filename = ''
 
         # Calling function to convert dictionary to collapsed file format
-        print sequenceDict
         return self.returnCollapsedSequence(sequenceDict)
 
     # Accepts image sequence dictionary as parameter and returns collapsed image sequence format for display in list view
